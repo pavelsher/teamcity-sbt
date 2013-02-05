@@ -1,4 +1,4 @@
-package com.madgag.teamcity.sbt.agent;
+package jetbrains.buildServer.sbt;
 
 import jetbrains.buildServer.RunBuildException;
 import jetbrains.buildServer.agent.runner.BuildServiceAdapter;

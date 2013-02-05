@@ -1,6 +1,5 @@
-package com.madgag.teamcity.sbt.agent;
+package jetbrains.buildServer.sbt;
 
-import com.madgag.teamcity.sbt.common.SbtRunnerConstants;
 import jetbrains.buildServer.agent.AgentBuildRunnerInfo;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.runner.CommandLineBuildService;
