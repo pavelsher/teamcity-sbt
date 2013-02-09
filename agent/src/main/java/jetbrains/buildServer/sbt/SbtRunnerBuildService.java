@@ -4,6 +4,7 @@ import jetbrains.buildServer.RunBuildException;
 import jetbrains.buildServer.agent.runner.*;
 import jetbrains.buildServer.runner.CommandLineArgumentsUtil;
 import jetbrains.buildServer.runner.JavaRunnerConstants;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -58,7 +59,11 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
 
   @NotNull
   public List<String> getProgramParameters() {
-    return CommandLineArgumentsUtil.getRunnerArgs(getRunnerParameters());
+    String args = getRunnerParameters().get(SbtRunnerConstants.SBT_ARGS_PARAM);
+    if (StringUtil.isEmptyOrSpaces(args)) {
+      return Collections.emptyList();
+    }
+    return CommandLineArgumentsUtil.extractArguments(args);
   }
 
   @NotNull

@@ -6,4 +6,5 @@ public interface SbtRunnerConstants {
   String RUNNER_DESCRIPTION = RUNNER_DISPLAY_NAME;
 
   String SBT_HOME_PARAM = "sbt.home";
+  String SBT_ARGS_PARAM = "sbt.args";
 }
