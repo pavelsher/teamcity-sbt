@@ -13,19 +13,14 @@ import org.jetbrains.annotations.NotNull;
 public class SbtRunnerRunType extends RunType {
   private PluginDescriptor myPluginDescriptor;
 
-  public SbtRunnerRunType(final RunTypeRegistry runTypeRegistry, final PluginDescriptor pluginDescriptor) {
+  public SbtRunnerRunType(@NotNull final RunTypeRegistry runTypeRegistry, @NotNull final PluginDescriptor pluginDescriptor) {
     myPluginDescriptor = pluginDescriptor;
     runTypeRegistry.registerRunType(this);
   }
 
   @Override
   public PropertiesProcessor getRunnerPropertiesProcessor() {
-    return new PropertiesProcessor() {
-
-        public Collection<InvalidProperty> process(Map<String, String> properties) {
-            return Collections.emptyList();
-        }
-    };
+    return null;
   }
 
   @Override
@@ -35,7 +30,7 @@ public class SbtRunnerRunType extends RunType {
 
   @Override
   public String getEditRunnerParamsJspFilePath() {
-    return myPluginDescriptor.getPluginResourcesPath("editFxCopRunParams.jsp");
+    return myPluginDescriptor.getPluginResourcesPath("editSbtRunParams.jsp");
   }
 
   @Override
@@ -45,7 +40,10 @@ public class SbtRunnerRunType extends RunType {
 
   @Override
   public Map<String, String> getDefaultRunnerProperties() {
-      return new HashMap<String, String>();
+    return new HashMap<String, String>() {{
+        put("target.jdk.home", "%env.JDK_16%");
+        put("jvmArgs", "-Xmx512m -XX:MaxPermSize=256m -XX:ReservedCodeCacheSize=128m -Dsbt.log.format=true");
+    }};
   }
 
   @NotNull
@@ -60,13 +58,14 @@ public class SbtRunnerRunType extends RunType {
   }
 
   
+  @NotNull
   @Override
-  public String describeParameters( final Map<String, String> parameters) {
+  public String describeParameters(@NotNull final Map<String, String> parameters) {
     return "";
   }
 
   @Override
-  public List<Requirement> getRunnerSpecificRequirements( final Map<String, String> runParameters) {
+  public List<Requirement> getRunnerSpecificRequirements(@NotNull final Map<String, String> runParameters) {
     return Collections.emptyList();
   }
 }
