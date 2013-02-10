@@ -22,16 +22,54 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
       "classes"
   };
 
+
+  @NotNull
+  @Override
+  public List<ProcessListener> getListeners() {
+    return Collections.<ProcessListener>singletonList(new ProcessListenerAdapter() {
+      @Override
+      public void onStandardOutput(@NotNull String line) {
+        String trimmed = line.trim();
+        if (trimmed.startsWith("[warn] ")) {
+          logWarning(line);
+          return;
+        }
+
+        if (trimmed.startsWith("[info] Resolving ") || trimmed.startsWith("[info] Compiling ") || trimmed.startsWith("[info] Updating ")) {
+          getLogger().progressMessage(line);
+        }
+
+        logMessage(line);
+      }
+
+      @Override
+      public void onErrorOutput(@NotNull String line) {
+        logWarning(line);
+      }
+
+      private void logMessage(final String message) {
+        getLogger().message(message);
+      }
+
+      private void logWarning(final String message) {
+        getLogger().warning(message);
+      }
+    });
+  }
+
+
   @NotNull
   @Override
   public ProgramCommandLine makeProgramCommandLine() throws RunBuildException {
     JavaCommandLineBuilder cliBuilder = new JavaCommandLineBuilder();
-    cliBuilder.setJavaHome(getRunnerParameters().get(JavaRunnerConstants.TARGET_JDK_HOME));
+    String javaHome = getRunnerParameters().get(JavaRunnerConstants.TARGET_JDK_HOME);
+    cliBuilder.setJavaHome(javaHome);
     cliBuilder.setBaseDir(getCheckoutDirectory().getAbsolutePath());
 
     cliBuilder.setSystemPrperties(getVMProperties());
     Map<String, String> envVars = new HashMap<String, String>(getEnvironmentVariables());
     envVars.put("SBT_HOME", getSbtHome());
+    envVars.put("JAVA_HOME", javaHome);
     cliBuilder.setEnvVariables(envVars);
 
     cliBuilder.setJvmArgs(JavaRunnerUtil.extractJvmArgs(getRunnerParameters()));
@@ -54,7 +92,14 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
 
   @NotNull
   private Map<String, String> getVMProperties() throws RunBuildException {
-    return JavaRunnerUtil.composeSystemProperties(getBuild(), getRunnerContext());
+    String sbtVersion = getRunnerParameters().get(SbtRunnerConstants.SBT_VERSION_PARAM);
+
+    Map<String, String> sysProps = new HashMap<String, String>();
+    if (!StringUtil.isEmptyOrSpaces(sbtVersion)) {
+      sysProps.put("sbt.version", sbtVersion);
+    }
+    sysProps.putAll(JavaRunnerUtil.composeSystemProperties(getBuild(), getRunnerContext()));
+    return sysProps;
   }
 
   @NotNull

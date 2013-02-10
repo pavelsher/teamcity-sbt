@@ -9,29 +9,31 @@
 
     <tr>
         <th>
-            <label for="build.sbt.path">Path to a build.sbt file:</label>
+            <label for="sbt.args">Sbt commands:</label>
         </th>
         <td>
-            <div class="completionIconWrapper">
-                <props:textProperty name="build.sbt.path" className="longField"/>
-                <bs:vcsTree fieldId="build.sbt.path"/>
-            </div>
-            <span class="error" id="error_build.sbt.path"></span>
-            <span class="smallNote">Specified path should be relative to the checkout directory.</span>
+            <props:textProperty name="sbt.args" className="longField"/>
+            <span class="smallNote">Commands to execute.</span>
+        </td>
+    </tr>
+
+    <tr>
+        <th><label for="sbt.home">Sbt home path: <l:star/></label></th>
+        <td>
+            <props:textProperty name="sbt.home" className="longField"/>
+            <span class="error" id="error_sbt.home"></span>
+        </td>
+    </tr>
+
+    <tr>
+        <th><label for="sbt.version">Sbt version:</label></th>
+        <td>
+            <props:textProperty name="sbt.version" className="longField"/>
+            <span class="smallNote">Sbt version to use, optional, usually taken from project/build.properties file</span>
         </td>
     </tr>
 
     <forms:workingDirectory />
-
-    <tr>
-        <th><label for="sbt.home">Sbt home path:</label></th>
-        <td><props:textProperty name="sbt.home" className="longField"/></td>
-    </tr>
-
-    <tr>
-        <th><label for="sbt.args">Additional Sbt command line parameters:</label></th>
-        <td><props:textProperty name="sbt.args" className="longField" expandable="true"/></td>
-    </tr>
 
 </l:settingsGroup>
 <l:settingsGroup title="Java Parameters">
