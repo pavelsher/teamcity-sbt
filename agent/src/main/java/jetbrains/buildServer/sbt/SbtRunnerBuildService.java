@@ -1,20 +1,17 @@
 package jetbrains.buildServer.sbt;
 
+import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.RunBuildException;
 import jetbrains.buildServer.agent.runner.*;
+import jetbrains.buildServer.messages.DefaultMessagesInfo;
 import jetbrains.buildServer.runner.CommandLineArgumentsUtil;
 import jetbrains.buildServer.runner.JavaRunnerConstants;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
-
-import static java.util.Arrays.asList;
-import static jetbrains.buildServer.agent.AgentRuntimeProperties.AGENT_WORK_DIR;
-import static jetbrains.buildServer.agent.AgentRuntimeProperties.RUNTIME_PROPS_FILE;
 
 public class SbtRunnerBuildService extends BuildServiceAdapter {
   private final static String[] SBT_JARS = new String[] {
@@ -32,40 +29,104 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
   @NotNull
   @Override
   public List<ProcessListener> getListeners() {
-    final Pattern actionPattern = Pattern.compile("^\\[[a-z]+\\]\\s+[a-zA-Z]+ing\\s+");
+    final Pattern actionPattern = Pattern.compile("^\\[[a-z]+\\]\\s+[A-Z][a-z]+ing\\s+");
     final Pattern[] errorPatterns = new Pattern[] {
+        Pattern.compile("^\\[error\\] "),
         Pattern.compile("^[:]{10,}"),
         Pattern.compile("^::\\s+UNRESOLVED DEPENDENCIES"),
         Pattern.compile("^::\\s+([^:]+): not found"),
         Pattern.compile("^Error during sbt execution:")
     };
 
+    final Pattern[] compileFinished = new Pattern[] {
+        Pattern.compile("^\\[success\\] "),
+        Pattern.compile("^Process exited with code"),
+        actionPattern
+    };
+
     return Collections.<ProcessListener>singletonList(new ProcessListenerAdapter() {
+      private final List<String> myLastErrors = new ArrayList<String>();
+      public String myCompilingBlock;
+
       @Override
       public void onStandardOutput(@NotNull String line) {
         String trimmed = line.trim();
+
+        boolean newCompileBlock = trimmed.startsWith("[info] Compiling ");
+        if (newCompileBlock) {
+          openCompileBlock(line);
+        } else {
+          for (Pattern p: compileFinished) {
+            if (p.matcher(trimmed).find()) {
+              closeCompileBlock();
+              break;
+            }
+          }
+        }
+
+        if (myCompilingBlock == null && actionPattern.matcher(trimmed).find()) {
+          getLogger().progressMessage(line);
+        }
+
         if (trimmed.startsWith("[warn] ")) {
           logWarning(line);
           return;
         }
 
-        if (actionPattern.matcher(trimmed).find()) {
-          getLogger().progressMessage(line);
-        }
-
         for (Pattern p: errorPatterns) {
           if (p.matcher(trimmed).find()) {
-            getLogger().error(line);
+            myLastErrors.add(line);
             return;
           }
         }
 
+        flushErrors();
+
         logMessage(line);
+      }
+
+      private void openCompileBlock(@NotNull String line) {
+        closeCompileBlock();
+
+        String[] splitted = line.split(" sources? to ");
+        if (splitted.length > 1) {
+          myCompilingBlock = splitted[0];
+          if (line.contains("sources to")) {
+            myCompilingBlock += " sources";
+          } else {
+            myCompilingBlock += " source";
+          }
+        } else {
+          myCompilingBlock = line;
+        }
+        getLogger().logMessage(DefaultMessagesInfo.createCompilationBlockStart(myCompilingBlock));
+      }
+
+      private void closeCompileBlock() {
+        if (myCompilingBlock != null) {
+          if (myLastErrors.isEmpty()) {
+            doCloseCompileBlock();
+          } else {
+            flushErrors();
+          }
+        }
+        myCompilingBlock = null;
+      }
+
+      private void doCloseCompileBlock() {
+        getLogger().logMessage(DefaultMessagesInfo.createCompilationBlockEnd(myCompilingBlock));
       }
 
       @Override
       public void onErrorOutput(@NotNull String line) {
         logWarning(line);
+      }
+
+      @Override
+      public void processFinished(int exitCode) {
+        flushErrors();
+        closeCompileBlock();
+        super.processFinished(exitCode);
       }
 
       private void logMessage(@NotNull final String message) {
@@ -75,6 +136,29 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
       private void logWarning(@NotNull final String message) {
         getLogger().warning(message);
       }
+
+      private boolean flushErrors() {
+        if (myLastErrors.isEmpty()) return false;
+
+        for (String err: myLastErrors) {
+          getLogger().error(err);
+        }
+
+        if (myCompilingBlock != null) {
+          doCloseCompileBlock();
+
+          String id = myLastErrors.get(0);
+          if (id.length() > 60) {
+            id = id.substring(0, 60); // can't be longer than 60 chars
+          }
+
+          getLogger().logBuildProblem(BuildProblemData.createBuildProblem(id, BuildProblemData.TC_COMPILATION_ERROR_TYPE, "Sbt reported compilation errors found"));
+        }
+
+        myLastErrors.clear();
+        return true;
+      }
+
     });
   }
 
