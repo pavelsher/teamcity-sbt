@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class SbtRunnerRunType extends RunType {
   public static final String DEFAULT_SBT_JVM_ARGS = TeamCityProperties.
-      getProperty("teamcity.sbt.defaultJvmArgs", "-Xmx512m -XX:MaxPermSize=256m -XX:ReservedCodeCacheSize=128m -Dsbt.log.format=true");
+      getProperty("teamcity.sbt.defaultJvmArgs", "-Xmx512m -XX:MaxPermSize=256m -XX:ReservedCodeCacheSize=128m -Dsbt.log.format=false");
   private PluginDescriptor myPluginDescriptor;
 
   public SbtRunnerRunType(@NotNull final RunTypeRegistry runTypeRegistry, @NotNull final PluginDescriptor pluginDescriptor) {

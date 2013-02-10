@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.agent.AgentRuntimeProperties.AGENT_WORK_DIR;
@@ -21,11 +22,18 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
       "sbt-launch.jar",
       "classes"
   };
+  private final IvyCacheProvider myIvyCacheProvider;
+
+  public SbtRunnerBuildService(@NotNull IvyCacheProvider ivyCacheProvider) {
+    myIvyCacheProvider = ivyCacheProvider;
+  }
 
 
   @NotNull
   @Override
   public List<ProcessListener> getListeners() {
+    final Pattern actionPattern = Pattern.compile("^\\[[a-z]+\\]\\s+[a-zA-Z]+ing\\s+.*");
+
     return Collections.<ProcessListener>singletonList(new ProcessListenerAdapter() {
       @Override
       public void onStandardOutput(@NotNull String line) {
@@ -35,7 +43,7 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
           return;
         }
 
-        if (trimmed.startsWith("[info] Resolving ") || trimmed.startsWith("[info] Compiling ") || trimmed.startsWith("[info] Updating ")) {
+        if (actionPattern.matcher(trimmed).matches()) {
           getLogger().progressMessage(line);
         }
 
@@ -47,11 +55,11 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
         logWarning(line);
       }
 
-      private void logMessage(final String message) {
+      private void logMessage(@NotNull final String message) {
         getLogger().message(message);
       }
 
-      private void logWarning(final String message) {
+      private void logWarning(@NotNull final String message) {
         getLogger().warning(message);
       }
     });
@@ -98,6 +106,10 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
     if (!StringUtil.isEmptyOrSpaces(sbtVersion)) {
       sysProps.put("sbt.version", sbtVersion);
     }
+
+    String ivyCachePath = getIvyCachePath();
+    sysProps.put("sbt.ivy.home", ivyCachePath);
+
     sysProps.putAll(JavaRunnerUtil.composeSystemProperties(getBuild(), getRunnerContext()));
     return sysProps;
   }
@@ -125,5 +137,10 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
   @NotNull
   private String getSbtHome() {
     return getRunnerParameters().get(SbtRunnerConstants.SBT_HOME_PARAM);
+  }
+
+  @NotNull
+  public String getIvyCachePath() {
+    return myIvyCacheProvider.getCacheDir().getAbsolutePath();
   }
 }

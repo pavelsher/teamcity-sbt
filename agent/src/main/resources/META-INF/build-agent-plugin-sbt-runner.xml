@@ -3,4 +3,5 @@
 
 <beans default-autowire="constructor">
     <bean class="jetbrains.buildServer.sbt.SbtRunnerBuildServiceFactory"/>
+    <bean class="jetbrains.buildServer.sbt.IvyCacheProvider"/>
 </beans>

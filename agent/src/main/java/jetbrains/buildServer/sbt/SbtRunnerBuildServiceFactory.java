@@ -7,23 +7,28 @@ import jetbrains.buildServer.agent.runner.CommandLineBuildServiceFactory;
 import org.jetbrains.annotations.NotNull;
 
 public class SbtRunnerBuildServiceFactory implements CommandLineBuildServiceFactory {
+  private final IvyCacheProvider myIvyCacheProvider;
 
-    @NotNull
-    public CommandLineBuildService createService() {
-        return new SbtRunnerBuildService();
-    }
+  public SbtRunnerBuildServiceFactory(@NotNull IvyCacheProvider ivyCacheProvider) {
+    myIvyCacheProvider = ivyCacheProvider;
+  }
 
-    @NotNull
-    public AgentBuildRunnerInfo getBuildRunnerInfo() {
-        return new AgentBuildRunnerInfo() {
-            @NotNull
-            public String getType() {
-                return SbtRunnerConstants.RUNNER_TYPE;
-            }
+  @NotNull
+  public CommandLineBuildService createService() {
+    return new SbtRunnerBuildService(myIvyCacheProvider);
+  }
 
-            public boolean canRun(@NotNull BuildAgentConfiguration agentConfiguration) {
-                return true;
-            }
-        };
-    }
+  @NotNull
+  public AgentBuildRunnerInfo getBuildRunnerInfo() {
+    return new AgentBuildRunnerInfo() {
+      @NotNull
+      public String getType() {
+        return SbtRunnerConstants.RUNNER_TYPE;
+      }
+
+      public boolean canRun(@NotNull BuildAgentConfiguration agentConfiguration) {
+        return true;
+      }
+    };
+  }
 }
