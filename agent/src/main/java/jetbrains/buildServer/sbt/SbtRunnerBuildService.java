@@ -32,7 +32,13 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
   @NotNull
   @Override
   public List<ProcessListener> getListeners() {
-    final Pattern actionPattern = Pattern.compile("^\\[[a-z]+\\]\\s+[a-zA-Z]+ing\\s+.*");
+    final Pattern actionPattern = Pattern.compile("^\\[[a-z]+\\]\\s+[a-zA-Z]+ing\\s+");
+    final Pattern[] errorPatterns = new Pattern[] {
+        Pattern.compile("^[:]{10,}"),
+        Pattern.compile("^::\\s+UNRESOLVED DEPENDENCIES"),
+        Pattern.compile("^::\\s+([^:]+): not found"),
+        Pattern.compile("^Error during sbt execution:")
+    };
 
     return Collections.<ProcessListener>singletonList(new ProcessListenerAdapter() {
       @Override
@@ -43,8 +49,15 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
           return;
         }
 
-        if (actionPattern.matcher(trimmed).matches()) {
+        if (actionPattern.matcher(trimmed).find()) {
           getLogger().progressMessage(line);
+        }
+
+        for (Pattern p: errorPatterns) {
+          if (p.matcher(trimmed).find()) {
+            getLogger().error(line);
+            return;
+          }
         }
 
         logMessage(line);
