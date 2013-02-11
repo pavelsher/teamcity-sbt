@@ -39,6 +39,7 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
     };
 
     final Pattern[] compileFinished = new Pattern[] {
+        Pattern.compile("^\\[info\\] "),
         Pattern.compile("^\\[success\\] "),
         Pattern.compile("^Process exited with code"),
         actionPattern
@@ -56,21 +57,18 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
         if (newCompileBlock) {
           openCompileBlock(line);
         } else {
-          for (Pattern p: compileFinished) {
-            if (p.matcher(trimmed).find()) {
-              closeCompileBlock();
-              break;
+          if (myCompilingBlock != null && !(trimmed.startsWith("[error] ") || trimmed.startsWith("[warn] "))) {
+            closeCompileBlock();
+          }
+
+          if (myCompilingBlock != null) {
+            for (Pattern p: compileFinished) {
+              if (p.matcher(trimmed).find()) {
+                closeCompileBlock();
+                break;
+              }
             }
           }
-        }
-
-        if (myCompilingBlock == null && actionPattern.matcher(trimmed).find()) {
-          getLogger().progressMessage(line);
-        }
-
-        if (trimmed.startsWith("[warn] ")) {
-          logWarning(line);
-          return;
         }
 
         for (Pattern p: errorPatterns) {
@@ -82,7 +80,16 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
 
         flushErrors();
 
-        logMessage(line);
+        if (trimmed.startsWith("[warn] ")) {
+          logWarning(line);
+          return;
+        }
+
+        if (actionPattern.matcher(trimmed).find()) {
+          logProgress(line);
+        } else {
+          logMessage(line);
+        }
       }
 
       private void openCompileBlock(@NotNull String line) {
@@ -99,6 +106,9 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
         } else {
           myCompilingBlock = line;
         }
+
+        myCompilingBlock = removePrefix(myCompilingBlock);
+
         getLogger().logMessage(DefaultMessagesInfo.createCompilationBlockStart(myCompilingBlock));
       }
 
@@ -129,19 +139,37 @@ public class SbtRunnerBuildService extends BuildServiceAdapter {
         super.processFinished(exitCode);
       }
 
+      private void logProgress(@NotNull final String message) {
+        getLogger().progressMessage(removePrefix(message));
+      }
+
       private void logMessage(@NotNull final String message) {
-        getLogger().message(message);
+        getLogger().message(removePrefix(message));
       }
 
       private void logWarning(@NotNull final String message) {
-        getLogger().warning(message);
+        getLogger().warning(removePrefix(message));
+      }
+
+      private void logError(@NotNull final String message) {
+        getLogger().error(removePrefix(message));
+      }
+
+      private String removePrefix(@NotNull String message) {
+        if (message.startsWith("[warn] ") || message.startsWith("[info] ")) {
+          return message.substring("[warn] ".length());
+        }
+        if (message.startsWith("[error] ")) {
+          return message.substring("[error] ".length());
+        }
+        return message;
       }
 
       private boolean flushErrors() {
         if (myLastErrors.isEmpty()) return false;
 
         for (String err: myLastErrors) {
-          getLogger().error(err);
+          logError(err);
         }
 
         if (myCompilingBlock != null) {
